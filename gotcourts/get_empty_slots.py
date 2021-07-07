@@ -4,6 +4,7 @@ import argparse
 import os
 import asyncio
 import json
+from datetime import datetime, timedelta
 
 # third party modules
 import aiohttp
@@ -16,12 +17,15 @@ bin_path = os.path.dirname(os.path.abspath(__file__))
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--date", type=str, default=os.getenv("GOTCOURTS_DATE"), help="date for which empty slots should be crawled")
+parser.add_argument("--weekdays", type=str, default=os.getenv("GOTCOURTS_WEEKDAYS", "sat,sun"), help="days of the week that need to be checked")
+parser.add_argument("--ndays", type=str, default=os.getenv("GOTCOURTS_NDAYS", "14"), help="number of days in the future to be checked")
 parser.add_argument("--club", type=str, default=os.getenv("GOTCOURTS_CLUB", "mythenquai"), help="tennis club")
 parser.add_argument("--ttoken", type=str, default=os.getenv("TELEGRAM_TOKEN"), help="token for telegram bot access")
 parser.add_argument("--tconf", type=str, default=os.getenv("TELEGRAM_CONFIG_PATH", f"{bin_path}/../config.yaml"), help="token for telegram bot access")
 
 
 CLUB_MAPPING = {"mythenquai": 16}
+WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 # utility functions
 def parse_time(input: int) -> dict:
@@ -61,7 +65,7 @@ def get_available_slots(json_r:dict)-> dict:
         for c in courts
     }
     # remove reservations from available slots
-    for id, res in enumerate(reservations):    
+    for res in reservations:    
         res_set = set([
             (to_hr_time(it*60), to_hr_time((it+60)*60))
             for it in range(res['startTime'] // 60, res['endTime'] // 60, 60)
@@ -76,6 +80,14 @@ def get_available_slots(json_r:dict)-> dict:
         if len(v['slots']) > 0
     }
 
+def get_dates(weekdays:list = [5, 6], anchor_date=datetime.today(), n_days:int = 14) -> list:
+    result = []
+    for it in range(n_days):
+        date = anchor_date + timedelta(days=it) 
+        if date.weekday() in weekdays: 
+            result.append(f"{date.year}-{date.month:02d}-{date.day:02d}")
+    return result
+
 async def fetch(session, url:str) -> dict:
     """Fetch content from URL"""
     async with session.get(url) as response:
@@ -89,8 +101,12 @@ async def get_responses_for_dates(club:str, dates:list) -> dict:
 
 
 def main(args):
-    # get dates
-    dates = [d for d in args.date.split(" ") if len(d.strip()) > 0]
+    if args.date is None:
+        weekdays = [WEEKDAYS.index(day.strip().lower()[:3]) for day in args.weekdays.split(',')]
+        dates = get_dates(weekdays=weekdays, n_days=int(args.ndays))
+    else:
+        # get dates
+        dates = [d for d in args.date.split(" ") if len(d.strip()) > 0]
     # get responses for dates
     loop = asyncio.get_event_loop()
     responses = loop.run_until_complete(
@@ -99,11 +115,13 @@ def main(args):
     # make sure number of responses match
     assert len(dates) == len(responses)
     # prepare resulting dictionary
-    result_dict = {
-        date: get_available_slots(r)
-        for date, r in zip(dates, responses)
-    }
-
+    result_text = ""
+    for date, r in zip(dates, responses):
+        result_text += f"*{date}*\n"
+        result_text += "\n".join([
+                f"{k}:  " + ", ".join(sorted([it[0] for it in v])) for k, v in get_available_slots(r).items()
+            ]) + "\n\n"
+     
     # Telegram Bot
     if args.ttoken is None:
         print("No Telegram Token is provided -> skipping")
@@ -111,12 +129,11 @@ def main(args):
         # initialize bot
         bot = GotCourtsWaiterBot(args.ttoken, args.tconf)
         # send message
-        bot.message_all(json.dumps(result_dict))
+        bot.message_all(result_text)
 
     # print results
-    print(result_dict)
+    print(result_text)
     
-
 if __name__ == "__main__":
     args = parser.parse_args()
     main(args)
