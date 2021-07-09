@@ -117,7 +117,7 @@ def main(args):
     # prepare resulting dictionary
     result_text = ""
     for date, r in zip(dates, responses):
-        result_text += f"*{date}*\n"
+        result_text += f"*{date}* ({args.club})\n"
         result_text += "\n".join([
                 f"{k}:  " + ", ".join(sorted([it[0] for it in v])) for k, v in get_available_slots(r).items()
             ]) + "\n\n"
