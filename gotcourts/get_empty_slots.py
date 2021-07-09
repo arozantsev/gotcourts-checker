@@ -24,7 +24,11 @@ parser.add_argument("--ttoken", type=str, default=os.getenv("TELEGRAM_TOKEN"), h
 parser.add_argument("--tconf", type=str, default=os.getenv("TELEGRAM_CONFIG_PATH", f"{bin_path}/../config.yaml"), help="token for telegram bot access")
 
 
-CLUB_MAPPING = {"mythenquai": 16}
+CLUB_MAPPING = {
+    "mythenquai": 16,
+    "lengg": 19
+}
+
 WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 # utility functions
@@ -70,9 +74,7 @@ def get_available_slots(json_r:dict)-> dict:
             (to_hr_time(it*60), to_hr_time((it+60)*60))
             for it in range(res['startTime'] // 60, res['endTime'] // 60, 60)
         ])
-        slot_set = courts_dict[res['courtId']]['slots']
-        if res_set.issubset(slot_set):
-            courts_dict[res['courtId']]['slots'] -= res_set
+        courts_dict[res['courtId']]['slots'] -= res_set
     
     return {
         v['name']: list(v['slots'])
@@ -118,9 +120,13 @@ def main(args):
     result_text = ""
     for date, r in zip(dates, responses):
         result_text += f"*{date}* ({args.club})\n"
-        result_text += "\n".join([
-                f"{k}:  " + ", ".join(sorted([it[0] for it in v])) for k, v in get_available_slots(r).items()
-            ]) + "\n\n"
+        available_slots = get_available_slots(r)
+        if len(available_slots) > 0:
+            result_text += "\n".join([
+                    f"{k}:  " + ", ".join(sorted([it[0] for it in v])) for k, v in available_slots.items()
+                ]) + "\n\n"
+        else:
+            result_text += "-- all reserved\n\n"
      
     # Telegram Bot
     if args.ttoken is None:
