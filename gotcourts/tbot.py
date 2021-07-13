@@ -1,22 +1,21 @@
-# standard modules
-import time
-
 # third party modules
 import yaml
 import telegram
 
-class GotCourtsWaiterBot():
+
+class GotCourtsWaiterBot:
     """Got Courts Waiter Bot
 
     Args:
         token (str): telegram Bot token
-        config_path (str): path to the YAML config file. 
+        config_path (str): path to the YAML config file.
     """
-    def __init__(self, token:str, config_path:str):
+
+    def __init__(self, token: str, config_path: str):
         self.bot = telegram.Bot(token=token)
         self.config = self.get_config(config_path)
 
-    def get_config(self, config_path:str) -> dict:
+    def get_config(self, config_path: str) -> dict:
         """Load configuration from a YAML file.
 
         Args:
@@ -25,18 +24,18 @@ class GotCourtsWaiterBot():
         Returns:
             dict: configuration dictionary
         """
-        with open(config_path, 'r') as stream:
+        with open(config_path, "r") as stream:
             return yaml.safe_load(stream)
 
-    def message_all(self, text:str):
+    def message_all(self, text: str):
         """Send message to all chat IDs that are present in the config.
 
         Args:
             text (str): message text
         """
-        for chat_id in self.config['chat_ids']:
+        for chat_id in self.config["chat_ids"]:
             self.bot.send_message(
-                chat_id=chat_id, 
-                text=text, 
-                parse_mode=telegram.constants.PARSEMODE_MARKDOWN
+                chat_id=chat_id,
+                text=text,
+                parse_mode=telegram.constants.PARSEMODE_MARKDOWN,
             )
