@@ -8,9 +8,17 @@ from datetime import datetime, timedelta
 import aiohttp
 
 # local modules
-from gotcourts.tbot import GotCourtsWaiterBot
+from gotcourts.tbot import GotCourtsWaiterBot, GotCourtsCheckerBotService
 
 bin_path = os.path.dirname(os.path.abspath(__file__))
+
+CLUB_MAPPING = {"mythenquai": 16, "lengg": 19}
+WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+
+class RunMode:
+    single = "single"
+    service = "service"
 
 
 parser = argparse.ArgumentParser()
@@ -50,11 +58,9 @@ parser.add_argument(
     default=os.getenv("TELEGRAM_CONFIG_PATH", f"{bin_path}/../config.yaml"),
     help="token for telegram bot access",
 )
-
-
-CLUB_MAPPING = {"mythenquai": 16, "lengg": 19}
-
-WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+parser.add_argument(
+    "--mode", type=str, default=RunMode.single, help="code running mode"
+)
 
 # utility functions
 def parse_time(input: int) -> dict:
@@ -140,24 +146,34 @@ async def get_responses_for_dates(club: str, dates: list) -> dict:
         return await asyncio.gather(*tasks)
 
 
-def main(args):
-    if args.date is None:
-        weekdays = [
-            WEEKDAYS.index(day.strip().lower()[:3]) for day in args.weekdays.split(",")
-        ]
-        dates = get_dates(weekdays=weekdays, n_days=int(args.ndays))
-    else:
-        # get dates
-        dates = [d for d in args.date.split(" ") if len(d.strip()) > 0]
-    # get responses for dates
-    loop = asyncio.get_event_loop()
-    responses = loop.run_until_complete(get_responses_for_dates(args.club, dates))
+def get_api_response(club: str, dates: list) -> str:
+    """Get the list of available slots for a specific club for a specific list of dates.
+
+    Args:
+        club (str): club name
+        dates (list): list of dates
+
+    Raises:
+        RuntimeError: if event loop cannot be initialized
+
+    Returns:
+        str: description of available slots
+    """
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError as e:
+        if str(e).startswith("There is no current event loop in thread"):
+            loop = asyncio.new_event_loop()
+        else:
+            raise RuntimeError(e)
+
+    responses = loop.run_until_complete(get_responses_for_dates(club, dates))
     # make sure number of responses match
     assert len(dates) == len(responses)
     # prepare resulting dictionary
     result_text = ""
     for date, r in zip(dates, responses):
-        result_text += f"*{date}* ({args.club})\n"
+        result_text += f"*{date}* ({club})\n"
         available_slots = get_available_slots(r)
         if len(available_slots) > 0:
             result_text += (
@@ -171,18 +187,70 @@ def main(args):
             )
         else:
             result_text += "-- all reserved\n\n"
+    return result_text
 
-    # Telegram Bot
-    if args.ttoken is None:
-        print("No Telegram Token is provided -> skipping")
+
+def request_processor(msg: str):
+    if msg == "":
+        return "empty request"
     else:
-        # initialize bot
-        bot = GotCourtsWaiterBot(args.ttoken, args.tconf)
-        # send message
-        bot.message_all(result_text)
+        prefix = ""
+        args = msg.split(" ")
+        club = args[0]
+        # check if club is present in the available mappings
+        if club not in CLUB_MAPPING.keys():
+            return (
+                f"Unknown club: '{club}'. Available options are: {CLUB_MAPPING.keys()}"
+            )
 
-    # print results
-    print(result_text)
+        weekdays = [WEEKDAYS.index(day.strip().lower()[:3]) for day in args[1:]]
+
+        if len(weekdays) == 0:
+            weekdays = [
+                WEEKDAYS.index(day.strip().lower()[:3]) for day in ["sat", "sun"]
+            ]
+            prefix = "Unspecified dates, checking Weekend \n\n"
+
+        dates = get_dates(weekdays=weekdays, n_days=7)
+        return prefix + get_api_response(club, dates)
+
+
+def main(args):
+    # check code run mode
+    if args.mode == RunMode.service:
+        assert args.ttoken, "Telegram token is not available"
+        service = GotCourtsCheckerBotService(
+            args.ttoken, request_processor=request_processor
+        )
+        service.init_service()
+        service.run()
+
+    elif args.mode == RunMode.single:
+        if args.date is None:
+            weekdays = [
+                WEEKDAYS.index(day.strip().lower()[:3])
+                for day in args.weekdays.split(",")
+            ]
+            dates = get_dates(weekdays=weekdays, n_days=int(args.ndays))
+        else:
+            # get dates
+            dates = [d for d in args.date.split(" ") if len(d.strip()) > 0]
+        # get responses for dates
+        result_text = get_api_response(args.club, dates)
+        # Telegram Bot
+        if args.ttoken is None:
+            print("No Telegram Token is provided -> skipping")
+        else:
+            # initialize bot
+            bot = GotCourtsWaiterBot(args.ttoken, args.tconf)
+            # send message
+            bot.message_all(result_text)
+
+        # print results
+        print(result_text)
+        return result_text
+    else:
+        raise NotImplementedError(f"Unknown mode: {args.mode}")
 
 
 if __name__ == "__main__":

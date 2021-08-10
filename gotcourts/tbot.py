@@ -1,6 +1,53 @@
+# standard modules
+import time
+import logging
+
 # third party modules
 import yaml
 import telegram
+from telegram.ext import Updater, CommandHandler
+
+# from telegram.ext import MessageHandler, Filters
+
+
+class GotCourtsCheckerBotService:
+    def __init__(self, token: str, request_processor: callable) -> None:
+        self.updater = Updater(token=token, use_context=True)
+        self.request_processor = request_processor
+
+    @staticmethod
+    def start(update, context):
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"I'm a GotCourtsCheckerBot, chat ID: {update.effective_chat.id}",
+        )
+
+    def check(self, update, context):
+        prefix = "/check"
+        msg = f"{update.message.text} "
+        assert msg.startswith(prefix)
+        response = self.request_processor(msg[len(prefix) :].strip())
+        context.bot.send_message(chat_id=update.effective_chat.id, text=response)
+
+    def init_service(self):
+        start_handler = CommandHandler("start", self.start)
+        check_handler = CommandHandler("check", self.check)
+
+        dispatcher = self.updater.dispatcher
+        dispatcher.add_handler(start_handler)
+        dispatcher.add_handler(check_handler)
+        # echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
+        # dispatcher.add_handler(echo_handler)
+
+    def run(self):
+        # start polling thread
+        self.updater.start_polling()
+        # initialize an infinite loop to monitor service status
+        while True:
+            if not self.updater.running:
+                logging.error("Service is not running")
+            else:
+                time.sleep(1)
 
 
 class GotCourtsWaiterBot:
