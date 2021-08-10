@@ -1,6 +1,5 @@
 # standard modules
 import time
-import logging
 
 # third party modules
 import yaml
@@ -42,11 +41,9 @@ class GotCourtsCheckerBotService:
         # start polling thread
         self.updater.start_polling()
         # initialize an infinite loop to monitor service status
-        while True:
-            if not self.updater.running:
-                logging.error("Service is not running")
-            else:
-                time.sleep(1)
+        while self.updater.running:
+            time.sleep(1)
+        print("service stopped")
 
 
 class GotCourtsCheckerBot:
