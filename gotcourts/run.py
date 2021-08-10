@@ -3,14 +3,10 @@ import argparse
 import os
 
 # local modules
-from gotcourts.api import GotCourtsAPI, get_dates
-from gotcourts.tbot import GotCourtsWaiterBot, GotCourtsCheckerBotService
+from gotcourts.api import GotCourtsAPI
+from gotcourts.tbot import GotCourtsCheckerBot, GotCourtsCheckerBotService
 
 bin_path = os.path.dirname(os.path.abspath(__file__))
-
-# CLUB_MAPPING = {"mythenquai": 16, "lengg": 19}
-# WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-
 
 # initialize API class
 API = GotCourtsAPI()
@@ -63,7 +59,16 @@ parser.add_argument(
 )
 
 
-def request_processor(msg: str):
+def request_processor(msg: str) -> str:
+    """Processing request messages
+
+    Args:
+        msg (str): input message that need to be processed
+
+    Returns:
+        str: output string
+    """
+
     if msg == "":
         return "empty request"
     else:
@@ -106,7 +111,7 @@ def main(args):
             print("No Telegram Token is provided -> skipping")
         else:
             # initialize bot
-            bot = GotCourtsWaiterBot(args.ttoken, args.tconf)
+            bot = GotCourtsCheckerBot(args.ttoken, args.tconf)
             # send message
             bot.message_all(result_text)
 

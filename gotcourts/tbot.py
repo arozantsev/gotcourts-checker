@@ -7,8 +7,6 @@ import yaml
 import telegram
 from telegram.ext import Updater, CommandHandler
 
-# from telegram.ext import MessageHandler, Filters
-
 
 class GotCourtsCheckerBotService:
     def __init__(self, token: str, request_processor: callable) -> None:
@@ -26,8 +24,11 @@ class GotCourtsCheckerBotService:
         prefix = "/check"
         msg = f"{update.message.text} "
         assert msg.startswith(prefix)
-        response = self.request_processor(msg[len(prefix) :].strip())
-        context.bot.send_message(chat_id=update.effective_chat.id, text=response)
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=self.request_processor(msg[len(prefix) :].strip()),
+            parse_mode=telegram.constants.PARSEMODE_MARKDOWN,
+        )
 
     def init_service(self):
         start_handler = CommandHandler("start", self.start)
@@ -36,8 +37,6 @@ class GotCourtsCheckerBotService:
         dispatcher = self.updater.dispatcher
         dispatcher.add_handler(start_handler)
         dispatcher.add_handler(check_handler)
-        # echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
-        # dispatcher.add_handler(echo_handler)
 
     def run(self):
         # start polling thread
@@ -50,7 +49,7 @@ class GotCourtsCheckerBotService:
                 time.sleep(1)
 
 
-class GotCourtsWaiterBot:
+class GotCourtsCheckerBot:
     """Got Courts Waiter Bot
 
     Args:
