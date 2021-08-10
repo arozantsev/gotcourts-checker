@@ -2,7 +2,9 @@ version: '3.2'
 
 services:
   gotcourts-checker:
-    build: docker
+    build:
+      context: ./
+      dockerfile: ./docker/Dockerfile
     command:
       - '--mode=service'
       - '--ttoken=${TELEGRAM_TOKEN}'
