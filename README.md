@@ -35,7 +35,7 @@ docker build -t gotcourts-checker:0.1.0 . -f .\docker\Dockerfile
 
 You can then check available slots by running:
 ```
-docker run --rm -it gotcourts-crawler:0.1.0 --weekdays="sat, sun" --ndays=14
+docker run --rm -it gotcourts-checker:0.1.0 --weekdays="sat, sun" --ndays=14
 ```
 
 ## Telegram notification
