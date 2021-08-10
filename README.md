@@ -17,10 +17,10 @@ pip install .
 
 In order to check available slots
 ```
-python -m gotcourts.get_empty_slots --club=mythenquai --weekdays="sat, sun" --ndays=14
+python -m gotcourts.run --club=mythenquai --weekdays="sat, sun" --ndays=14
 ```
 
-## Docker 
+## Docker
 
 Alternatively, instead of using a python environment, there is a possibility to run the code in docker. For that you need to have docker installed on you machine.
 
@@ -28,14 +28,14 @@ Alternatively, instead of using a python environment, there is a possibility to 
 
 In order to build the docker image run:
 ```
-docker build -t gotcourts-checker:0.0.1 . -f .\docker\Dockerfile
+docker build -t gotcourts-checker:0.1.0 . -f .\docker\Dockerfile
 ```
 
 ### Check available slots
 
 You can then check available slots by running:
 ```
-docker run --rm -it gotcourts-crawler:0.0.1 --weekdays="sat, sun" --ndays=14
+docker run --rm -it gotcourts-crawler:0.1.0 --weekdays="sat, sun" --ndays=14
 ```
 
 ## Telegram notification
@@ -51,5 +51,5 @@ In order to send notification to a specific channel in telegram about the court 
 
 2. pass telegram bot token and config to the script as follows:
     ```
-    python -m gotcourts.get_empty_slots --club=mythenquai --weekdays="sat, sun" --ndays=14 --tconf=<path to config.yaml> --ttoken="<telegram bot token>"
-    ``` 
+    python -m gotcourts.run --club=mythenquai --weekdays="sat, sun" --ndays=14 --tconf=<path to config.yaml> --ttoken="<telegram bot token>"
+    ```
