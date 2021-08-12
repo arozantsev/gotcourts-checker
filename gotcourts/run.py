@@ -1,6 +1,7 @@
 # base modules
 import argparse
 import os
+from functools import partial
 
 # local modules
 from gotcourts.api import GotCourtsAPI
@@ -59,7 +60,7 @@ parser.add_argument(
 )
 
 
-def request_processor(msg: str) -> str:
+def request_processor(msg: str, ndays: int) -> str:
     """Processing request messages
 
     Args:
@@ -80,10 +81,10 @@ def request_processor(msg: str) -> str:
             return f"Unknown club: '{club}'. Available options are: {API.club_mapping.keys()}"
 
         if len(args[1:]) == 0:
-            dates = API.get_dates_list(weekdays="sat, sun", n_days=7)
+            dates = API.get_dates_list(weekdays="sat, sun", n_days=ndays)
             prefix = "Unspecified dates, checking Weekend \n\n"
         else:
-            dates = API.get_dates_list(weekdays=", ".join(args[1:]), n_days=7)
+            dates = API.get_dates_list(weekdays=", ".join(args[1:]), n_days=ndays)
 
         return prefix + API.get_api_response(club, dates)
 
@@ -93,7 +94,8 @@ def main(args):
     if args.mode == RunMode.service:
         assert args.ttoken, "Telegram token is not available"
         service = GotCourtsCheckerBotService(
-            args.ttoken, request_processor=request_processor
+            args.ttoken,
+            request_processor=partial(request_processor, ndays=int(args.ndays)),
         )
         service.init_service()
         service.run()
